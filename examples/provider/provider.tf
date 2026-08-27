@@ -1,3 +1,3 @@
-provider "scaffolding" {
-  # example configuration here
+provider "slack" {
+  # The token defaults to the SLACK_TOKEN environment variable.
 }
