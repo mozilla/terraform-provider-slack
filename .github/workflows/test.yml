@@ -1,19 +1,23 @@
 # Terraform Provider testing workflow.
 name: Tests
 
-# This GitHub action runs your tests for each pull request and push.
-# Optionally, you can turn it on using a schedule for regular testing.
 on:
   pull_request:
     paths-ignore:
       - 'README.md'
   push:
+    branches:
+      - main
     paths-ignore:
       - 'README.md'
 
 # Testing only needs permissions to read the repository contents.
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Ensure project builds before running testing matrix
@@ -60,6 +64,10 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
+      # The matrix entries share one SLACK_TOKEN, so running them concurrently
+      # bursts through the users.list rate limit (20 requests per minute). 
+      # Serialize them to let the limit refill between Terraform versions.
+      max-parallel: 1
       matrix:
         # Terraform versions
         terraform:
