@@ -57,7 +57,7 @@ jobs:
     name: 'Acceptance Tests: Terraform ${{ matrix.terraform }}'
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -79,5 +79,7 @@ jobs:
       - env:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
           TF_ACC: "1"
-        run: go test -v -cover ./internal/provider/
-        timeout-minutes: 10
+        # Keep -timeout below the step's timeout-minutes so a hang is killed by
+        # Go, which dumps goroutine stacks
+        run: go test -v -cover -timeout 10m ./internal/provider/
+        timeout-minutes: 12

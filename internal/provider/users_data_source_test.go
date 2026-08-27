@@ -26,8 +26,8 @@ func TestFetchUsersPaginatesSortsAndMaps(t *testing.T) {
 		if err := r.ParseForm(); err != nil {
 			t.Fatalf("parse form: %v", err)
 		}
-		if got := r.FormValue("limit"); got != "200" {
-			t.Errorf("limit = %q, want 200", got)
+		if got := r.FormValue("limit"); got != "1000" {
+			t.Errorf("limit = %q, want 1000", got)
 		}
 		if got := r.FormValue("team_id"); got != "T123" {
 			t.Errorf("team_id = %q, want T123", got)

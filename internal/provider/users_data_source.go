@@ -210,7 +210,9 @@ func (d *UsersDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 }
 
 func fetchUsers(ctx context.Context, client slackUsersClient, teamID string, includeDeleted bool) ([]SlackUserModel, error) {
-	options := []slack.GetUsersOption{slack.GetUsersOptionLimit(200)}
+	// users.list is a Tier 2 method (~20 requests/minute), so the page size drives
+	// how often Slack throttles a full listing. 1000 is the documented maximum.
+	options := []slack.GetUsersOption{slack.GetUsersOptionLimit(1000)}
 	if teamID != "" {
 		options = append(options, slack.GetUsersOptionTeamID(teamID))
 	}
