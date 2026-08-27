@@ -27,8 +27,9 @@ type UsersDataSource struct {
 }
 
 type UsersDataSourceModel struct {
-	TeamID types.String     `tfsdk:"team_id"`
-	Users  []SlackUserModel `tfsdk:"users"`
+	TeamID         types.String     `tfsdk:"team_id"`
+	IncludeDeleted types.Bool       `tfsdk:"include_deleted"`
+	Users          []SlackUserModel `tfsdk:"users"`
 }
 
 type SlackUserModel struct {
@@ -85,6 +86,11 @@ func (d *UsersDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists all users visible to the configured token using Slack's `users.list` API.",
 		Attributes: map[string]schema.Attribute{
+			"include_deleted": schema.BoolAttribute{
+				MarkdownDescription: "Whether deleted or deactivated users are included in `users`. Defaults to `true`.",
+				Optional:            true,
+				Computed:            true,
+			},
 			"team_id": schema.StringAttribute{
 				MarkdownDescription: "Workspace ID to list. Required when using an organization-level token and ignored by Slack for workspace-level tokens.",
 				Optional:            true,
@@ -187,17 +193,23 @@ func (d *UsersDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	users, err := fetchUsers(ctx, d.client, data.TeamID.ValueString())
+	includeDeleted := true
+	if !data.IncludeDeleted.IsNull() && !data.IncludeDeleted.IsUnknown() {
+		includeDeleted = data.IncludeDeleted.ValueBool()
+	}
+
+	users, err := fetchUsers(ctx, d.client, data.TeamID.ValueString(), includeDeleted)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to List Slack Users", fmt.Sprintf("Slack users.list returned an error: %s", err))
 		return
 	}
 
+	data.IncludeDeleted = types.BoolValue(includeDeleted)
 	data.Users = users
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func fetchUsers(ctx context.Context, client slackUsersClient, teamID string) ([]SlackUserModel, error) {
+func fetchUsers(ctx context.Context, client slackUsersClient, teamID string, includeDeleted bool) ([]SlackUserModel, error) {
 	options := []slack.GetUsersOption{slack.GetUsersOptionLimit(200)}
 	if teamID != "" {
 		options = append(options, slack.GetUsersOptionTeamID(teamID))
@@ -211,6 +223,9 @@ func fetchUsers(ctx context.Context, client slackUsersClient, teamID string) ([]
 	sort.Slice(users, func(i, j int) bool { return users[i].ID < users[j].ID })
 	result := make([]SlackUserModel, 0, len(users))
 	for _, user := range users {
+		if user.Deleted && !includeDeleted {
+			continue
+		}
 		result = append(result, flattenSlackUser(user))
 	}
 	return result, nil

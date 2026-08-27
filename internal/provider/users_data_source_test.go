@@ -71,7 +71,7 @@ func TestFetchUsersPaginatesSortsAndMaps(t *testing.T) {
 	defer server.Close()
 
 	client := slack.New("test-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(server.Client()))
-	users, err := fetchUsers(context.Background(), client, "T123")
+	users, err := fetchUsers(context.Background(), client, "T123", true)
 	if err != nil {
 		t.Fatalf("fetchUsers() error = %v", err)
 	}
@@ -103,8 +103,31 @@ func TestFetchUsersReturnsSlackError(t *testing.T) {
 	defer server.Close()
 
 	client := slack.New("test-token", slack.OptionAPIURL(server.URL+"/"), slack.OptionHTTPClient(server.Client()))
-	if _, err := fetchUsers(context.Background(), client, ""); err == nil || err.Error() != "missing_scope" {
+	if _, err := fetchUsers(context.Background(), client, "", true); err == nil || err.Error() != "missing_scope" {
 		t.Fatalf("fetchUsers() error = %v, want missing_scope", err)
+	}
+}
+
+type staticUsersClient []slack.User
+
+func (c staticUsersClient) GetUsersContext(context.Context, ...slack.GetUsersOption) ([]slack.User, error) {
+	return c, nil
+}
+
+func TestFetchUsersFiltersDeleted(t *testing.T) {
+	t.Parallel()
+
+	client := staticUsersClient{
+		{ID: "U200", Deleted: true},
+		{ID: "U100", Deleted: false},
+	}
+
+	users, err := fetchUsers(context.Background(), client, "", false)
+	if err != nil {
+		t.Fatalf("fetchUsers() error = %v", err)
+	}
+	if len(users) != 1 || users[0].ID.ValueString() != "U100" {
+		t.Fatalf("fetchUsers() = %#v, want only active user U100", users)
 	}
 }
 

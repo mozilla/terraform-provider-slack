@@ -23,16 +23,19 @@ func TestAccUsersDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: `data "slack_users" "test" {}`,
-				Check: resource.TestCheckResourceAttrWith("data.slack_users.test", "users.#", func(value string) error {
-					count, err := strconv.Atoi(value)
-					if err != nil {
-						return fmt.Errorf("parse users count: %w", err)
-					}
-					if count == 0 {
-						return fmt.Errorf("Slack users.list returned no users")
-					}
-					return nil
-				}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.slack_users.test", "include_deleted", "true"),
+					resource.TestCheckResourceAttrWith("data.slack_users.test", "users.#", func(value string) error {
+						count, err := strconv.Atoi(value)
+						if err != nil {
+							return fmt.Errorf("parse users count: %w", err)
+						}
+						if count == 0 {
+							return fmt.Errorf("Slack users.list returned no users")
+						}
+						return nil
+					}),
+				),
 			},
 		},
 	})

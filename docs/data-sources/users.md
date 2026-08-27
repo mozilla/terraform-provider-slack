@@ -25,6 +25,7 @@ output "slack_user_ids" {
 
 ### Optional
 
+- `include_deleted` (Boolean) Whether deleted or deactivated users are included in `users`. Defaults to `true`.
 - `team_id` (String) Workspace ID to list. Required when using an organization-level token and ignored by Slack for workspace-level tokens.
 
 ### Read-Only
